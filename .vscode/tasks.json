@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "vite: dev",
+      "type": "shell",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd",
+      "args": ["run", "dev", "--", "--host", "127.0.0.1"],
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "."
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*vite --host 127\\.0\\.0\\.1.*",
+          "endsPattern": ".*Local:\\s+http://127\\.0\\.0\\.1:5173/.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      }
+    }
+  ]
+}
