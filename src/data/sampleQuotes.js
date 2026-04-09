@@ -4,6 +4,7 @@ export const sampleQuotes = [
     content: "We become what we repeatedly do.",
     author: "Will Durant",
     category: "Discipline",
+    image_url: null,
     created_at: "2026-04-01T08:00:00.000Z",
   },
   {
@@ -11,6 +12,7 @@ export const sampleQuotes = [
     content: "Simplicity is the consequence of refined emotions.",
     author: "Jean D'Alembert",
     category: "Design",
+    image_url: null,
     created_at: "2026-04-03T10:30:00.000Z",
   },
   {
@@ -18,6 +20,7 @@ export const sampleQuotes = [
     content: "Luck is what happens when preparation meets opportunity.",
     author: "Seneca",
     category: "Preparation",
+    image_url: null,
     created_at: "2026-04-05T14:15:00.000Z",
   }
 ];

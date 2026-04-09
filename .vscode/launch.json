@@ -2,15 +2,25 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Quote Repository: Edge",
-      "type": "pwa-msedge",
+      "name": "Quote Repository: Run in Edge",
+      "type": "node-terminal",
       "request": "launch",
-      "url": "http://127.0.0.1:5173",
-      "webRoot": "${workspaceFolder}",
-      "preLaunchTask": "vite: dev",
-      "presentation": {
-        "group": "quote-repository",
-        "order": 1
+      "command": "& 'C:\\Program Files\\nodejs\\npm.cmd' run dev -- --host 127.0.0.1",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(http://(?:127\\.0\\.0\\.1|localhost):5173/)",
+        "uriFormat": "%s",
+        "action": "debugWithEdge"
+      }
+    },
+    {
+      "name": "Quote Repository: Open Browser Only",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "& 'C:\\Program Files\\nodejs\\npm.cmd' run dev -- --host 127.0.0.1",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(http://(?:127\\.0\\.0\\.1|localhost):5173/)",
+        "uriFormat": "%s",
+        "action": "openExternally"
       }
     }
   ]

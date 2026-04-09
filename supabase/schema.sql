@@ -3,6 +3,7 @@ create table if not exists public.quotes (
   content text not null,
   author text not null,
   category text not null default 'General',
+  image_url text,
   created_at timestamp with time zone not null default now()
 );
 
@@ -26,3 +27,26 @@ for update
 to anon
 using (true)
 with check (true);
+
+insert into storage.buckets (id, name, public)
+values ('quote-images', 'quote-images', true)
+on conflict (id) do nothing;
+
+create policy "Allow public quote image read access"
+on storage.objects
+for select
+to public
+using (bucket_id = 'quote-images');
+
+create policy "Allow public quote image upload access"
+on storage.objects
+for insert
+to anon
+with check (bucket_id = 'quote-images');
+
+create policy "Allow public quote image update access"
+on storage.objects
+for update
+to anon
+using (bucket_id = 'quote-images')
+with check (bucket_id = 'quote-images');

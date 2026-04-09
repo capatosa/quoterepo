@@ -15,6 +15,32 @@ const isMissingQuotesTableError = (error) => {
   );
 };
 
+async function uploadQuoteImage(imageFile) {
+  const fileExtension = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+  const filePath = `quotes/${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}.${fileExtension}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("quote-images")
+    .upload(filePath, imageFile, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw new Error(
+      "Unable to upload the image. Make sure the Supabase bucket 'quote-images' exists and allows uploads.",
+    );
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("quote-images").getPublicUrl(filePath);
+
+  return publicUrl;
+}
+
 export async function fetchQuotes() {
   if (!hasSupabaseCredentials) {
     return {
@@ -50,10 +76,17 @@ export async function fetchQuotes() {
 }
 
 export async function addQuote(quote) {
+  const imageUrl = quote.imageFile
+    ? hasSupabaseCredentials
+      ? await uploadQuoteImage(quote.imageFile)
+      : quote.imagePreview
+    : "";
+
   const payload = {
     content: quote.content.trim(),
     author: quote.author.trim(),
     category: quote.category.trim() || "General",
+    image_url: imageUrl || null,
   };
 
   if (!hasSupabaseCredentials) {
@@ -84,10 +117,23 @@ export async function addQuote(quote) {
 }
 
 export async function updateQuote(quote) {
+  let imageUrl = quote.image_url ?? null;
+
+  if (quote.removeImage) {
+    imageUrl = null;
+  }
+
+  if (quote.imageFile) {
+    imageUrl = hasSupabaseCredentials
+      ? await uploadQuoteImage(quote.imageFile)
+      : quote.imagePreview;
+  }
+
   const payload = {
     content: quote.content.trim(),
     author: quote.author.trim(),
     category: quote.category.trim() || "General",
+    image_url: imageUrl,
   };
 
   if (!hasSupabaseCredentials) {

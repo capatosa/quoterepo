@@ -17,8 +17,8 @@
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": ".*vite --host 127\\.0\\.0\\.1.*",
-          "endsPattern": ".*Local:\\s+http://127\\.0\\.0\\.1:5173/.*"
+          "beginsPattern": ".*vite.*--host 127\\.0\\.0\\.1.*",
+          "endsPattern": ".*http://(127\\.0\\.0\\.1|localhost):5173/.*"
         }
       },
       "presentation": {

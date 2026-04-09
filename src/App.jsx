@@ -14,6 +14,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [editingQuote, setEditingQuote] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
+  const [selectedImageQuote, setSelectedImageQuote] = useState(null);
   const [dataMode, setDataMode] = useState(
     hasSupabaseCredentials ? "supabase" : "local",
   );
@@ -110,6 +111,14 @@ export default function App() {
     setSelectedQuote(null);
   };
 
+  const handleOpenImage = (quote) => {
+    setSelectedImageQuote(quote);
+  };
+
+  const handleCloseImage = () => {
+    setSelectedImageQuote(null);
+  };
+
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <section className="grid gap-6 lg:grid-cols-[240px_1fr]">
@@ -191,6 +200,7 @@ export default function App() {
                   quote={quote}
                   noteIndex={index}
                   onEdit={handleEditQuote}
+                  onOpenImage={handleOpenImage}
                   onOpen={handleOpenQuote}
                 />
               ))}
@@ -275,6 +285,38 @@ export default function App() {
                 >
                   Edit quote
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedImageQuote?.image_url ? (
+        <div className="fixed inset-0 z-[45] flex items-center justify-center bg-stone-950/80 px-4 py-8 backdrop-blur-sm">
+          <div className="modal-shell relative w-full max-w-4xl">
+            <button
+              type="button"
+              onClick={handleCloseImage}
+              className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-stone-950/70 text-lg text-paper transition hover:bg-stone-900"
+              aria-label="Close image preview"
+            >
+              x
+            </button>
+
+            <div className="modal-panel overflow-hidden p-4">
+              <img
+                src={selectedImageQuote.image_url}
+                alt={`Visual for quote by ${selectedImageQuote.author}`}
+                className="max-h-[75vh] w-full rounded-[1.4rem] object-contain"
+              />
+
+              <div className="mt-4 flex items-center justify-between gap-4 px-2 pb-2">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-stone-300">
+                  {selectedImageQuote.author}
+                </p>
+                <p className="text-xs uppercase tracking-[0.18em] text-stone-400">
+                  {selectedImageQuote.category}
+                </p>
               </div>
             </div>
           </div>
