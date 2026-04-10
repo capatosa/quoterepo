@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import CommentThread from "./components/CommentThread";
 import EditableQuoteCard from "./components/EditableQuoteCard";
 import QuoteForm from "./components/QuoteForm";
+import { addQuoteComment, fetchQuoteComments } from "./lib/comments";
 import { addQuote, fetchQuotes, updateQuote } from "./lib/quotes";
+import {
+  formatCount,
+  normalizeCount,
+  recordQuoteView,
+  recordSiteVisit,
+} from "./lib/metrics";
 import { hasSupabaseCredentials } from "./lib/supabase";
 
 export default function App() {
@@ -15,6 +23,13 @@ export default function App() {
   const [editingQuote, setEditingQuote] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [selectedImageQuote, setSelectedImageQuote] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [commentAuthor, setCommentAuthor] = useState("");
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentError, setCommentError] = useState("");
+  const [visitorCount, setVisitorCount] = useState(null);
   const [dataMode, setDataMode] = useState(
     hasSupabaseCredentials ? "supabase" : "local",
   );
@@ -40,6 +55,78 @@ export default function App() {
     };
 
     loadQuotes();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedQuote) {
+      setComments([]);
+      setCommentDraft("");
+      setCommentError("");
+      return undefined;
+    }
+
+    let isActive = true;
+
+    const loadComments = async () => {
+      try {
+        setCommentsLoading(true);
+        setCommentError("");
+        const fetchedComments = await fetchQuoteComments(selectedQuote.id);
+
+        if (!isActive) {
+          return;
+        }
+
+        setComments(fetchedComments);
+        setQuotes((current) =>
+          current.map((quote) =>
+            quote.id === selectedQuote.id
+              ? { ...quote, comment_count: fetchedComments.length }
+              : quote,
+          ),
+        );
+        setSelectedQuote((currentQuote) =>
+          currentQuote?.id === selectedQuote.id
+            ? { ...currentQuote, comment_count: fetchedComments.length }
+            : currentQuote,
+        );
+      } catch (loadError) {
+        if (isActive) {
+          setCommentError(loadError.message || "Unable to load comments.");
+        }
+      } finally {
+        if (isActive) {
+          setCommentsLoading(false);
+        }
+      }
+    };
+
+    loadComments();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedQuote?.id]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    recordSiteVisit()
+      .then((count) => {
+        if (isActive) {
+          setVisitorCount(count);
+        }
+      })
+      .catch((visitError) => {
+        console.warn("Unable to update site visit count.", visitError);
+        if (isActive) {
+          setVisitorCount(0);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const categories = useMemo(() => {
@@ -104,11 +191,80 @@ export default function App() {
   };
 
   const handleOpenQuote = (quote) => {
-    setSelectedQuote(quote);
+    const optimisticViewCount = normalizeCount(quote.view_count) + 1;
+
+    setSelectedQuote({ ...quote, view_count: optimisticViewCount });
+    setQuotes((current) =>
+      current.map((currentQuote) =>
+        currentQuote.id === quote.id
+          ? {
+              ...currentQuote,
+              view_count: normalizeCount(currentQuote.view_count) + 1,
+            }
+          : currentQuote,
+      ),
+    );
+
+    recordQuoteView(quote.id)
+      .then((viewCount) => {
+        setQuotes((current) =>
+          current.map((currentQuote) =>
+            currentQuote.id === quote.id
+              ? { ...currentQuote, view_count: viewCount }
+              : currentQuote,
+          ),
+        );
+        setSelectedQuote((currentQuote) =>
+          currentQuote?.id === quote.id
+            ? { ...currentQuote, view_count: viewCount }
+            : currentQuote,
+        );
+      })
+      .catch((viewError) => {
+        console.warn("Unable to update quote view count.", viewError);
+      });
   };
 
   const handleCloseQuote = () => {
     setSelectedQuote(null);
+  };
+
+  const handleSubmitComment = async (event) => {
+    event.preventDefault();
+
+    if (!selectedQuote) {
+      return;
+    }
+
+    try {
+      setCommentSaving(true);
+      setCommentError("");
+      const newComment = await addQuoteComment({
+        quoteId: selectedQuote.id,
+        author: commentAuthor,
+        content: commentDraft,
+      });
+      const nextCommentCount = comments.length + 1;
+
+      setComments((current) => [...current, newComment]);
+      setCommentDraft("");
+      setQuotes((current) =>
+        current.map((quote) =>
+          quote.id === selectedQuote.id
+            ? { ...quote, comment_count: nextCommentCount }
+            : quote,
+        ),
+      );
+      setSelectedQuote((currentQuote) =>
+        currentQuote?.id === selectedQuote.id
+          ? { ...currentQuote, comment_count: nextCommentCount }
+          : currentQuote,
+      );
+    } catch (saveError) {
+      setCommentError(saveError.message || "Unable to post comment.");
+    } finally {
+      setCommentSaving(false);
+    }
   };
 
   const handleOpenImage = (quote) => {
@@ -156,6 +312,15 @@ export default function App() {
           <p className="mt-5 text-sm leading-6 text-stone-400">
             {notice || "Live quotes are loaded from Supabase."}
           </p>
+
+          <div className="mt-5 rounded-lg border border-white/10 bg-stone-950/45 p-4">
+            <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
+              Site visits
+            </p>
+            <p className="mt-2 font-display text-3xl text-paper">
+              {visitorCount === null ? "..." : formatCount(visitorCount, "visit")}
+            </p>
+          </div>
         </aside>
 
         <div>
@@ -252,9 +417,17 @@ export default function App() {
 
             <div className="sticky-note-modal-panel px-6 py-8 sm:px-10 sm:py-10">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                <span className="rounded-full border border-stone-900/10 bg-white/45 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-stone-700">
-                  {selectedQuote.category}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-stone-900/10 bg-white/45 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-stone-700">
+                    {selectedQuote.category}
+                  </span>
+                  <span className="rounded-full border border-stone-900/10 bg-white/35 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-700">
+                    {formatCount(selectedQuote.view_count, "view")}
+                  </span>
+                  <span className="rounded-full border border-stone-900/10 bg-white/35 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-700">
+                    {formatCount(selectedQuote.comment_count, "comment")}
+                  </span>
+                </div>
                 <span className="text-xs uppercase tracking-[0.18em] text-stone-600">
                   {new Date(selectedQuote.created_at).toLocaleDateString(
                     undefined,
@@ -286,6 +459,18 @@ export default function App() {
                   Edit quote
                 </button>
               </div>
+
+              <CommentThread
+                comments={comments}
+                commentsLoading={commentsLoading}
+                commentError={commentError}
+                commentAuthor={commentAuthor}
+                commentDraft={commentDraft}
+                commentSaving={commentSaving}
+                onAuthorChange={setCommentAuthor}
+                onDraftChange={setCommentDraft}
+                onSubmit={handleSubmitComment}
+              />
             </div>
           </div>
         </div>

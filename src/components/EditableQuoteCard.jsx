@@ -1,3 +1,5 @@
+import { formatCount } from "../lib/metrics";
+
 const noteStyles = [
   "note-yellow -rotate-2",
   "note-rose rotate-1",
@@ -18,6 +20,8 @@ export default function EditableQuoteCard({
     year: "numeric",
   });
   const noteStyle = noteStyles[noteIndex % noteStyles.length];
+  const viewCount = formatCount(quote.view_count, "view");
+  const commentCount = formatCount(quote.comment_count, "comment");
 
   return (
     <article
@@ -40,9 +44,17 @@ export default function EditableQuoteCard({
       </p>
 
       <div className="mt-5 flex items-center justify-between gap-3">
-        <p className="truncate pr-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-700">
-          {quote.author}
-        </p>
+        <div className="min-w-0 pr-2">
+          <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-700">
+            {quote.author}
+          </p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-600">
+            {viewCount}
+          </p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-600">
+            {commentCount}
+          </p>
+        </div>
 
         <div className="flex shrink-0 items-center gap-2">
           {quote.image_url ? (

@@ -1,4 +1,6 @@
 import { sampleQuotes } from "../data/sampleQuotes";
+import { getLocalCommentCount } from "./comments";
+import { getLocalQuoteViewCount, normalizeCount } from "./metrics";
 import { hasSupabaseCredentials, supabase } from "./supabase";
 
 const sortQuotes = (quotes) =>
@@ -14,6 +16,17 @@ const isMissingQuotesTableError = (error) => {
     message.includes("schema cache")
   );
 };
+
+const withQuoteViewCounts = (quotes, useLocalCounts) =>
+  quotes.map((quote) => ({
+    ...quote,
+    view_count: useLocalCounts
+      ? getLocalQuoteViewCount(quote.id)
+      : normalizeCount(quote.view_count),
+    comment_count: useLocalCounts
+      ? getLocalCommentCount(quote.id)
+      : normalizeCount(quote.comment_count),
+  }));
 
 async function uploadQuoteImage(imageFile) {
   const fileExtension = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -44,7 +57,7 @@ async function uploadQuoteImage(imageFile) {
 export async function fetchQuotes() {
   if (!hasSupabaseCredentials) {
     return {
-      quotes: sortQuotes(sampleQuotes),
+      quotes: withQuoteViewCounts(sortQuotes(sampleQuotes), true),
       mode: "local",
       notice: "Supabase keys are missing, so the app is using local starter quotes.",
     };
@@ -58,7 +71,7 @@ export async function fetchQuotes() {
   if (error) {
     if (isMissingQuotesTableError(error)) {
       return {
-        quotes: sortQuotes(sampleQuotes),
+        quotes: withQuoteViewCounts(sortQuotes(sampleQuotes), true),
         mode: "setup-required",
         notice:
           "Supabase is connected, but the quotes table has not been created yet. Run supabase/schema.sql in the Supabase SQL Editor to finish setup.",
@@ -69,7 +82,7 @@ export async function fetchQuotes() {
   }
 
   return {
-    quotes: data ?? [],
+    quotes: withQuoteViewCounts(data ?? [], false),
     mode: "supabase",
     notice: "",
   };
@@ -93,6 +106,8 @@ export async function addQuote(quote) {
     return {
       id: Date.now(),
       ...payload,
+      view_count: 0,
+      comment_count: 0,
       created_at: new Date().toISOString(),
     };
   }
